@@ -1,29 +1,55 @@
+const express = require('express');
 const http = require('http');
 const socket = require('socket.io');
+const path = require('path');
 
-const server = http.createServer();
+const app = express();
+const server = http.createServer(app);
 const io = socket(server);
 
-let cnt = 0;
+app.use(express.static(path.join(__dirname,'..' ,'client')));
+
+const formatMessage = require('./utils/messages');
+
+const { userJoin, getRoomsUser } = require('./utils/users');
+
+const BotName = 'Chat Bot'
 
 io.on('connection', socket => {
-    cnt++;
-    console.log(`Player${cnt} has joined the chat`)
-    console.log(`New WS Connection`);
 
+    socket.on('userJoin', ({ username, room }) => {
+        console.log(socket.id);
+        console.log(username);
+        console.log(room);
+        const user  = userJoin( socket.id, username, room );
 
-    socket.broadcast.emit('message', { message: `Player${cnt} have successfully joined the chat`, player: cnt})
+        socket.join(user.room);
 
-    socket.on('humus', (msg) => {
-        io.emit('message', { message: msg})
+        // Send message only to the current socket
+        socket.emit('message', formatMessage(BotName, 'Wellcome to ChatApp'))
+
+        socket.broadcast.to(user.room).emit('message', formatMessage(BotName, `${user.username} added to ChatApp`))
+
+        io.to(user.room).emit('roomUsers', {
+            room: user.room,
+            users: getRoomsUser(user.room)
+        })
+
     })
 
+
+    socket.on('chatMessage', (data) => {
+        // console.log(data),
+        io.emit('message', formatMessage(data.user,data.message))
+    });
+
     socket.on('disconnect', () => {
-        console.log('user disconnected');
-        io.emit('message',`Player${cnt} has disconnected from the chat`)
+        // console.log('user disconnected');
+        io.emit('message', formatMessage('Username', 'has disconnected from the chat'))
     });
 })
 
 
+const PORT  = process.env.PORT || 8181;
 
-server.listen(8181, () => console.log("Servier is running on port 8181"))
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`))
