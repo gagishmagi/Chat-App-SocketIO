@@ -1,8 +1,29 @@
 const chatForm = document.getElementById('chat-form');
 const chatMessages = document.querySelector('.chat-messages');
 const roomName = document.getElementById('room-name');
+const usersList = document.getElementById('users');
+const disconnectBtn = document.getElementById('discon');
 
-const socket = io('localhost:8181');
+let socket;
+
+// console.log(typeof socket);
+
+// if (localStorage.length == 0) {
+    socket = io('localhost:8181');
+
+    // var socketConnection = io.connect('localhost:8181');
+    // socketConnection.on('connect', function () {
+    //     const sessionID = socketConnection.socket.sessionid; //
+    //     console.log(sessionID)
+    // });
+
+    // localStorage.setItem('socket_id', socket.connect().id);
+    // console.log(socket.id);
+// }else{
+    // socket.id = localStorage.getItem('socket_id');
+// }
+// localStorage.getItem('socket_id');
+
 
 const {username, room} = Qs.parse(location.search, { ignoreQueryPrefix: true });
 
@@ -12,7 +33,7 @@ const {username, room} = Qs.parse(location.search, { ignoreQueryPrefix: true });
 
 
 socket.on('message', (message) => {
-    // console.log(message);
+    console.log(message);
     outputMessage(message)
 
     //scroll down
@@ -38,9 +59,15 @@ chatForm.addEventListener('submit', (e) => {
 })
 
 socket.on('roomUsers' , (data) => {
-    console.log(data.room);
-
     roomName.innerText = data.room.charAt(0).toUpperCase()+ data.room.slice(1);
+
+    usersList.innerHTML = '';
+
+    data.users.forEach( (user) => {
+        const li = document.createElement('li');
+        li.innerText = user.username;
+        usersList.appendChild(li);
+    });
 
 });
 
@@ -56,3 +83,9 @@ function outputMessage(data){
      `;
     chatMessages.appendChild(div);
 }
+
+disconnectBtn.addEventListener('click', (e)=>{
+    e.preventDefault()
+    socket.emit('disconnect');
+    location.href = 'index.html';
+})

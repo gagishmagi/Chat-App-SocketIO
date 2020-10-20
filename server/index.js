@@ -11,16 +11,17 @@ app.use(express.static(path.join(__dirname,'..' ,'client')));
 
 const formatMessage = require('./utils/messages');
 
-const { userJoin, getRoomsUser } = require('./utils/users');
+const { userJoin, getRoomsUser, userLeave } = require('./utils/users');
 
 const BotName = 'Chat Bot'
 
 io.on('connection', socket => {
 
+
     socket.on('userJoin', ({ username, room }) => {
         console.log(socket.id);
-        console.log(username);
-        console.log(room);
+        // console.log(username);
+        // console.log(room);
         const user  = userJoin( socket.id, username, room );
 
         socket.join(user.room);
@@ -44,8 +45,23 @@ io.on('connection', socket => {
     });
 
     socket.on('disconnect', () => {
-        // console.log('user disconnected');
-        io.emit('message', formatMessage('Username', 'has disconnected from the chat'))
+        const user = userLeave(socket.id);
+
+        if(user){
+
+            io
+            .to(user.room)
+            .emit(
+                'message',
+                formatMessage(BotName, `${user.username} has left the chat room`)
+            );
+        }
+
+        io.to(user.room).emit('roomUsers',{
+            room: user.room,
+            users: getRoomsUser(user.room)
+        })
+
     });
 })
 
